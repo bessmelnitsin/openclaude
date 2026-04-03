@@ -1,0 +1,40 @@
+services:
+  ollama:
+    image: ollama/ollama
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    # GPU support — раскомментировать если есть NVIDIA GPU:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  openclaude:
+    build: .
+    image: openclaude
+    depends_on:
+      - ollama
+    stdin_open: true
+    tty: true
+    environment:
+      CLAUDE_CODE_USE_OPENAI: "1"
+      OPENAI_API_KEY: "none"
+      # Ollama доступен внутри Docker сети по имени сервиса
+      OPENAI_BASE_URL: "http://ollama:11434/v1"
+      # Переопределяется через: MODEL=gemma4 docker compose run openclaude
+      OPENAI_MODEL: "${MODEL:-qwen2.5-coder:7b}"
+    volumes:
+      # Монтируй папку проекта сюда:
+      # docker compose run -v /path/to/your/project:/workspace openclaude
+      - type: bind
+        source: ${WORKSPACE:-.}
+        target: /workspace
+
+volumes:
+  ollama_data:
